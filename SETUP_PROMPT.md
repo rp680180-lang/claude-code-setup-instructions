@@ -53,34 +53,72 @@ If the user does not reply with `I have a backup`, stop and repeat backup option
 
 Plugins are first-class tools in this workflow.
 
-### 0a) Detect available plugin commands
+### 0a) Discover all available plugins
 
-1. Run `/help` and inspect available slash commands.
-2. Build a list of installed plugins and available command names.
-3. Run a quick stack scan (package files + key directories) so conditional plugins can be recommended.
+**Do not rely on a hardcoded plugin list.** Dynamically discover what's available:
 
-### 0b) Plugin recommendation sets
+1. Run `/help` and inspect available slash commands to build a list of already-installed plugins.
+2. Run a quick stack scan (package files + key directories) to build a project profile for matching.
+3. Ensure the official Anthropic marketplace is configured:
+   ```
+   claude plugin marketplace add anthropics/claude-plugins-official
+   ```
+4. Run `claude plugin list --available --json` to get the **full catalog** of installable plugins from configured marketplaces.
+5. Parse each plugin's name, description, and capabilities from the JSON output.
 
-#### Essential plugins (recommend all)
+### 0b) Intelligent plugin matching
 
-| Plugin | Why it matters now |
+Using the project profile from step 0a and the full plugin catalog, recommend plugins in three tiers. **Only recommend plugins from the official Anthropic marketplace** (`anthropics/claude-plugins-official`) for safety. Never recommend third-party marketplace plugins without explicit user request.
+
+#### Tier 1: Essential workflow plugins (recommend for all projects)
+
+These plugins power the setup wizard itself and core daily workflows. Always recommend them:
+- `claude-code-setup` — powers automation recommender during detection
+- `code-review` — code review workflow commands
+- `commit-commands` — commit/push/PR workflow commands
+- `claude-md-management` — generates/improves CLAUDE.md
+- `feature-dev` — guided feature development workflow
+- `explanatory-output-style` — beginner-friendly educational insights
+
+#### Tier 2: Stack-matched plugins (recommend based on project detection)
+
+Match the detected project profile against **every plugin in the catalog**. Use each plugin's description and name to determine relevance. Common matching patterns include (but are not limited to):
+
+| Project signal | Likely relevant plugins |
 |---|---|
-| `claude-code-setup` | Used for automation recommender during detection |
-| `code-review` | Adds code review workflow commands |
-| `commit-commands` | Adds commit workflow commands for clean setup commits |
-| `claude-md-management` | Generates/improves `CLAUDE.md` |
-| `feature-dev` | Guided feature workflow after setup |
-| `superpowers` | Additional productivity behaviors |
-| `explanatory-output-style` | Beginner-friendly explanations while coding |
+| Frontend framework (React, Vue, Svelte, etc.) | `frontend-design`, `playwright` |
+| `.github/` directory | `github` |
+| `.gitlab-ci.yml` or GitLab remote | `gitlab` |
+| Firebase config (`firebase.json`, `firebaserc`, firebase deps) | `firebase` |
+| Supabase config or deps | `supabase` |
+| Stripe deps or config | `stripe` |
+| Linear integration markers | `linear` |
+| Asana integration markers | `asana` |
+| Slack integration markers | `slack` |
+| Laravel project (`artisan`, `composer.json` with laravel) | `laravel-boost` |
+| Playwright/Cypress test config | `playwright` |
+| TypeScript project | `typescript-lsp` |
+| Python project | `pyright-lsp` |
+| Go project | `gopls-lsp` |
+| Rust project | `rust-analyzer-lsp` |
+| C# project (`.csproj`, `.sln`) | `csharp-lsp` |
+| Java project (`pom.xml`, `build.gradle`) | `jdtls-lsp` |
+| Kotlin project | `kotlin-lsp` |
+| Swift project (`Package.swift`) | `swift-lsp` |
+| PHP project (`composer.json`) | `php-lsp` |
+| Lua project | `lua-lsp` |
+| C/C++ project (CMakeLists, Makefile with clang) | `clangd-lsp` |
 
-#### Conditional plugins
+**Important**: This table is a guideline, not an exhaustive list. Always check the full catalog output from step 0a — new plugins may have been added since this prompt was written. If a plugin's description clearly matches a detected project signal, recommend it even if it's not in the table above.
 
-| Condition | Plugin | Why |
-|---|---|---|
-| Frontend framework detected | `frontend-design` | UI component workflow |
-| `.github/` exists | `github` | GitHub issues/PR workflows |
-| Vercel detected | `vercel` | Deployment workflow |
-| Sentry detected | `sentry` | Monitoring workflow |
+#### Tier 3: Optional enhancement plugins (mention but don't push)
+
+These are useful but situational. Briefly mention them and let the user decide:
+- `security-guidance` — security-focused hook warnings
+- `hookify` — custom hook creation helper
+- `code-simplifier` — code complexity reduction
+- `plugin-dev` — only if user is building plugins
+- `agent-sdk-dev` — only if Agent SDK project detected
 
 ### 0c) Global changes gate (required)
 
@@ -157,15 +195,17 @@ If unavailable, note:
 
 ### 1b) Manual detection
 
-Read repository signals for language, framework, tooling, test runner, services, infra, and existing Claude config.
+Read repository signals comprehensively. **Do not limit detection to a fixed list** — scan broadly for any identifiable language, framework, tool, service, or infrastructure pattern.
 
-Check these paths/signals (if present):
-- Runtime/language: `package.json`, `pyproject.toml`, `requirements.txt`, `Cargo.toml`, `go.mod`, `Gemfile`, `pom.xml`, `build.gradle*`, `*.csproj`, `*.sln`, `mix.exs`, `Package.swift`
-- Tooling: Prettier, ESLint, Ruff, Black, isort, mypy, Jest, Vitest, pytest, Playwright, Cypress, TypeScript, Tailwind, rubocop, go/rust formatters
-- Services/infra: `.github/`, Docker, Supabase, Prisma, Drizzle, ORM deps, `.env*`, Vercel, Cloudflare, AWS, monorepo indicators, Sentry
-- Existing Claude setup: `.claude/`, `.claude/settings.json`, `.mcp.json`, `CLAUDE.md`, skills, agents
+Scan these categories (examples, not exhaustive):
+- **Runtime/language**: `package.json`, `pyproject.toml`, `requirements.txt`, `Cargo.toml`, `go.mod`, `Gemfile`, `pom.xml`, `build.gradle*`, `*.csproj`, `*.sln`, `mix.exs`, `Package.swift`, `composer.json`, `CMakeLists.txt`, `Makefile`, etc.
+- **Frameworks**: React, Next.js, Vue, Nuxt, Svelte, Angular, Django, Flask, FastAPI, Rails, Laravel, Spring, .NET, Phoenix, etc. — detect from deps, config files, and directory structure.
+- **Tooling**: Any formatter, linter, or type-checker found in config files or deps (Prettier, ESLint, Biome, Ruff, Black, isort, mypy, rubocop, gofmt, rustfmt, clang-format, phpcs, swiftlint, ktlint, etc.).
+- **Test frameworks**: Any test runner found in config or deps (Jest, Vitest, pytest, Playwright, Cypress, RSpec, JUnit, Go test, cargo test, PHPUnit, XCTest, etc.).
+- **Services/infra**: `.github/`, `.gitlab-ci.yml`, Docker, Firebase (`firebase.json`, `.firebaserc`, firebase deps), Supabase, Prisma, Drizzle, any ORM, `.env*`, Vercel (`vercel.json`), Cloudflare, AWS, GCP, Stripe (stripe deps), Sentry, Linear, Slack, Asana, monorepo indicators (workspaces, lerna, turborepo, nx), and any other service config files.
+- **Existing Claude setup**: `.claude/`, `.claude/settings.json`, `.mcp.json`, `CLAUDE.md`, skills, agents.
 
-Record all detections. Preserve and merge existing Claude setup; do not replace it.
+The goal is to build a complete project profile that can be matched against the full plugin catalog and used to determine appropriate MCP servers, hooks, skills, and subagents. Record all detections. Preserve and merge existing Claude setup; do not replace it.
 
 ---
 
@@ -195,9 +235,7 @@ Hooks:
 - [trigger] -> [action]
 
 Skills:
-- /code-review — [purpose]
-- /write-tests — [purpose]
-- /security-review — [purpose]
+- [/skill-name] — [purpose, tailored to this project]
 
 Subagents:
 - [name] ([model]) — [purpose]
@@ -214,46 +252,98 @@ Wait for explicit `yes`.
 
 ### Planning rules
 
-#### MCP selection
+All recommendations below should be **derived from the detected project profile**, not from a fixed checklist. Use the detection results from Phase 1 to determine what's relevant for this specific repository.
 
-| Condition | Server | Command |
+#### MCP server selection (dynamic)
+
+Recommend MCP servers based on detected services and tooling. Always include `context7` for documentation lookup. For everything else, match against detected signals.
+
+Well-known MCP servers to consider (recommend only if relevant to the project):
+
+| Project signal | Server | Install command |
 |---|---|---|
-| Always | `context7` | `claude mcp add context7 --transport http https://mcp.context7.com/mcp --scope project` |
+| All projects | `context7` | `claude mcp add context7 --transport http https://mcp.context7.com/mcp --scope project` |
 | Playwright/Cypress detected | `playwright` | `claude mcp add playwright --transport stdio --scope project -- npx -y @anthropic-ai/mcp-server-playwright` |
 | `.github/` exists | `github` | `claude mcp add github --scope project` |
 | Supabase detected | `supabase` | `claude mcp add supabase --transport stdio --scope project -- npx -y @anthropic-ai/mcp-server-supabase` |
 
-#### Hook selection
+This table is a starting point. If the project uses services that have known MCP servers not listed here (e.g., new Anthropic MCP servers released after this prompt was written), recommend those too. Check for available MCP servers matching detected services.
 
-| Condition | Hook |
+#### Hook selection (dynamic)
+
+Create hooks based on **whatever formatter, linter, or safety tool is detected** in the project. Do not limit hooks to a pre-set list.
+
+**Principle**: For every formatter/linter detected, create a PostToolUse hook on `Edit|Write|MultiEdit` that auto-runs it on the changed file. For every sensitive file pattern detected, create a PreToolUse guard hook.
+
+Common patterns (examples, not exhaustive):
+
+| Detected tool | Hook |
 |---|---|
 | Prettier | PostToolUse `Edit|Write|MultiEdit`: `npx prettier --write "$CLAUDE_FILE_PATH"` |
 | ESLint | PostToolUse `Edit|Write|MultiEdit`: `npx eslint --fix "$CLAUDE_FILE_PATH"` |
+| Biome | PostToolUse `Edit|Write|MultiEdit`: `npx biome check --write "$CLAUDE_FILE_PATH"` |
 | Ruff | PostToolUse `Edit|Write|MultiEdit`: `ruff format "$CLAUDE_FILE_PATH" && ruff check --fix "$CLAUDE_FILE_PATH"` |
 | Black | PostToolUse `Edit|Write|MultiEdit`: `black "$CLAUDE_FILE_PATH"` |
-| Go | PostToolUse `Edit|Write|MultiEdit`: `gofmt -w "$CLAUDE_FILE_PATH"` |
-| Rust | PostToolUse `Edit|Write|MultiEdit`: `cargo fmt` |
+| isort (standalone) | PostToolUse `Edit|Write|MultiEdit`: `isort "$CLAUDE_FILE_PATH"` |
+| Go project | PostToolUse `Edit|Write|MultiEdit`: `gofmt -w "$CLAUDE_FILE_PATH"` |
+| Rust project | PostToolUse `Edit|Write|MultiEdit`: `cargo fmt` |
 | RuboCop | PostToolUse `Edit|Write|MultiEdit`: `rubocop -a "$CLAUDE_FILE_PATH"` |
+| PHP CS Fixer | PostToolUse `Edit|Write|MultiEdit`: `php-cs-fixer fix "$CLAUDE_FILE_PATH"` |
+| Swift Format | PostToolUse `Edit|Write|MultiEdit`: `swiftformat "$CLAUDE_FILE_PATH"` |
+| ktlint | PostToolUse `Edit|Write|MultiEdit`: `ktlint -F "$CLAUDE_FILE_PATH"` |
+| clang-format | PostToolUse `Edit|Write|MultiEdit`: `clang-format -i "$CLAUDE_FILE_PATH"` |
 | `.env*` exists | PreToolUse `Edit|Write`: block `.env*` writes via hook exit code 2 |
 
-#### Skills (always)
+If a formatter/linter is detected that isn't in this table, still create an appropriate hook for it using the same pattern.
 
-1. `code-review`
-2. `write-tests`
-3. `security-review`
+#### Skills (dynamic, based on project needs)
 
-#### Subagents
+Create project skills based on what the project actually needs. **Do not install a fixed set of skills for every project.**
 
-| Condition | Agent |
-|---|---|
-| Always | `code-reviewer` (sonnet) |
-| Test framework detected | `test-writer` (sonnet) |
-| Codebase > 200 files | `code-explorer` (haiku) |
+Determine which skills to create by considering:
+- What types of review does this project benefit from? (code review, security review, performance review, accessibility review, etc.)
+- Does the project have tests? If so, create a test-writing skill tailored to the detected test framework.
+- Does the project have a frontend? Consider a UI/UX review skill.
+- Does the project have an API? Consider an API design review skill.
+- Does the project use a database? Consider a schema review skill.
+
+Common skills to consider (create only what's relevant):
+
+| Condition | Skill | Purpose |
+|---|---|---|
+| All projects | `code-review` | Review code changes for quality and bugs |
+| Test framework detected | `write-tests` | Generate tests using the project's test framework |
+| Security-sensitive project (auth, payments, user data) | `security-review` | Review for security vulnerabilities |
+| Frontend project | `ui-review` | Review UI components for consistency and accessibility |
+| API project | `api-review` | Review API design for consistency and best practices |
+
+Tailor each skill's SKILL.md content to the specific project: reference the project's actual test framework, coding conventions, architecture patterns, etc.
+
+#### Subagents (dynamic, based on project scale and needs)
+
+Create subagents based on the project's size, complexity, and detected tooling. **Do not create agents the project won't use.**
+
+Determine which agents to create by considering:
+- Is the project large enough to benefit from a code explorer agent?
+- Does the project have tests and a detectable test framework?
+- What specialized review would help this specific codebase?
+
+Common agents to consider (create only what's relevant):
+
+| Condition | Agent | Model | Purpose |
+|---|---|---|---|
+| All projects | `code-reviewer` | sonnet | Specialized code review with project context |
+| Test framework detected | `test-writer` | sonnet | Generate tests using detected framework |
+| Codebase > 200 files | `code-explorer` | haiku | Efficient codebase navigation and search |
+| Complex architecture (monorepo, microservices) | `architecture-reviewer` | sonnet | Review architectural decisions |
+
+Each agent's prompt should reference the project's specific technology stack, conventions, and important files — not be generic boilerplate.
 
 #### Permissions
 
-Add language-specific allow rules plus always-allow git read commands.
+Add language-specific allow rules based on the detected runtime/tooling, plus always-allow git read commands.
 Always deny reading `.env`, `.env.*`, `.env.local`.
+If the project uses additional sensitive file patterns (credentials, secrets, keys), deny those too.
 
 ---
 
@@ -286,17 +376,11 @@ Then run: `chmod +x .claude/hooks/protect-env.sh`
 
 ### 3c) Skills
 
-Create/merge these project skill files:
-- `.claude/skills/code-review/SKILL.md`
-- `.claude/skills/write-tests/SKILL.md`
-- `.claude/skills/security-review/SKILL.md`
+Create/merge skill files in `.claude/skills/<skill-name>/SKILL.md` for each skill determined in the plan. Tailor each skill's content to the project's detected stack, conventions, and architecture — do not use generic boilerplate.
 
 ### 3d) Subagents
 
-Create/merge:
-- `.claude/agents/code-reviewer.md`
-- `.claude/agents/test-writer.md` (if test framework detected)
-- `.claude/agents/code-explorer.md` (if codebase > 200 files)
+Create/merge agent files in `.claude/agents/<agent-name>.md` for each agent determined in the plan. Each agent's system prompt should reference the project's specific technology stack, test framework, directory structure, and conventions.
 
 ### 3e) CLAUDE.md (plugin-first)
 
@@ -362,10 +446,8 @@ After installation, output a concise summary with these sections.
 #### Skills and Subagents
 | Item | Purpose |
 |---|---|
-| /code-review | [one line] |
-| /write-tests | [one line] |
-| /security-review | [one line] |
-| [agent] | [one line] |
+| [/skill-name] | [one line] |
+| [agent-name] | [one line] |
 
 #### Files Created/Updated
 - .claude/settings.json
@@ -386,9 +468,10 @@ Use this exact beginner-friendly structure:
 - Edit as normal. Formatting/lint hooks run automatically after edits.
 
 3) Check quality:
+- [List each installed skill with a one-line usage example, e.g.:]
 - Run `/code-review` after meaningful changes.
-- Run `/write-tests <file-or-feature>` to generate tests.
-- Run `/security-review` before release.
+- Run `/write-tests <file-or-feature>` to generate tests (if installed).
+- Run other installed skills as relevant to your workflow.
 
 4) Keep setup fresh:
 - Run your recommender command alias `[AUTOMATION_RECOMMENDER_CMD]` when stack/tools change.
