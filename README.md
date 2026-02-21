@@ -6,7 +6,7 @@ One prompt to fully configure Claude Code for any project. Paste it into Claude 
 
 1. **Detects** your language, framework, tooling, and services
 2. **Shows a plan** of everything it will install and waits for your OK
-3. **Installs** MCP servers, hooks, skills, subagents, CLAUDE.md, and permissions
+3. **Installs** MCP servers, hooks, skills, subagents, plugins, superpowers, CLAUDE.md, and permissions
 4. **Outputs a summary** showing exactly how to use each feature
 
 ## Quick Start
@@ -29,7 +29,9 @@ One prompt to fully configure Claude Code for any project. Paste it into Claude 
 | **Hooks** | Auto-format on every edit, block writes to `.env` files | Based on your tooling |
 | **Skills** | `/code-review`, `/write-tests`, `/security-review` | Always |
 | **Subagents** | code-reviewer, test-writer, code-explorer | Based on project size & tooling |
-| **CLAUDE.md** | Project instructions with commands, structure, conventions | Always |
+| **Plugins** | claude-code-setup, commit-commands, feature-dev, code-review, frontend-design | Based on your stack |
+| **Superpowers** | Extended thinking, plan mode, model selection guide, background agents | Always |
+| **CLAUDE.md** | Project instructions + superpowers guide | Always |
 | **Permissions** | Auto-allow safe commands, protect secrets | Always |
 
 ## Detection Matrix
