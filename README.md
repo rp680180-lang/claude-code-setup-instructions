@@ -1,13 +1,14 @@
 # Claude Code Setup Wizard
 
-One prompt to fully configure Claude Code for any project. Paste it into Claude Code, and it detects your stack, installs all relevant optimizations, and tells you how to use them.
+One prompt to configure Claude Code for any project with a beginner-safe flow: backup first, global-plugin consent, plugin-powered setup, then a simple workflow handoff.
 
 ## What It Does
 
-1. **Detects** your language, framework, tooling, and services
-2. **Shows a plan** of everything it will install and waits for your OK
-3. **Installs** MCP servers, hooks, skills, subagents, plugins, superpowers, CLAUDE.md, and permissions
-4. **Outputs a summary** showing exactly how to use each feature
+1. Runs a required local safety checkpoint before changing repo setup files
+2. Checks plugins, asks one bulk consent for global installs, and installs missing plugins only
+3. Detects your stack with plugin tools + manual repo analysis
+4. Installs project automations (MCP, hooks, skills, subagents, permissions) additively
+5. Produces a beginner workflow card showing exactly how to use `/commands` and automations
 
 ## Quick Start
 
@@ -16,77 +17,60 @@ One prompt to fully configure Claude Code for any project. Paste it into Claude 
    cd your-project
    claude
    ```
-2. Copy the entire contents of [`SETUP_PROMPT.md`](./SETUP_PROMPT.md) and paste it as your first message
-3. Review the installation plan Claude shows you
-4. Type `y` to proceed
-5. Done — your project is now fully configured
+2. Copy the full contents of [`SETUP_PROMPT.md`](./SETUP_PROMPT.md) and paste as your first message
+3. Complete checkpoints when asked:
+   - Type `I have a backup`
+   - Approve global plugin installs (`yes`/`no`)
+   - Type `ready`
+   - Approve install plan (`yes`/`no`)
+   - Optional setup commit (`yes`/`no`)
+
+You should not need to run setup commands manually in normal flow; the wizard executes setup actions after your confirmations.
+
+## Safety and Scope
+
+- Local file writes are limited to `.claude/`, `.mcp.json`, and `CLAUDE.md`
+- Plugin installs are global (all Claude projects), so the wizard asks explicit bulk consent
+- Existing setup is preserved: merge/append behavior only
+- Missing plugins are added; existing plugins are never removed/disabled
+
+## Plugin-First Behavior
+
+The wizard treats plugins as operational tools, not just install targets:
+
+- Uses automation recommender command alias for detection when available
+- Uses CLAUDE.md improver command alias for `CLAUDE.md` generation when available
+- Offers commit command alias at the end for clean setup commits
+- Resolves command aliases from `/help` so workflow survives command name differences
 
 ## What Gets Installed
 
 | Category | What | When |
-|----------|------|------|
-| **MCP Servers** | context7, playwright, github, supabase | Based on your stack |
-| **Hooks** | Auto-format on every edit, block writes to `.env` files | Based on your tooling |
-| **Skills** | `/code-review`, `/write-tests`, `/security-review` | Always |
-| **Subagents** | code-reviewer, test-writer, code-explorer | Based on project size & tooling |
-| **Plugins** | claude-code-setup, commit-commands, feature-dev, code-review, frontend-design | Based on your stack |
-| **Superpowers** | Extended thinking, plan mode, model selection guide, background agents | Always |
-| **CLAUDE.md** | Project instructions + superpowers guide | Always |
-| **Permissions** | Auto-allow safe commands, protect secrets | Always |
+|---|---|---|
+| Plugins (global) | Essential + conditional plugins | Missing-only, after consent |
+| MCP servers | `context7` + stack-based servers | Based on detection |
+| Hooks | Auto-format/lint and `.env*` write protection | Based on tooling/signals |
+| Skills | `/code-review`, `/write-tests`, `/security-review` | Always |
+| Subagents | `code-reviewer`, `test-writer`, `code-explorer` | Based on project size/tooling |
+| CLAUDE.md | Plugin-generated (fallback manual) + workflow section | Always |
+| Permissions | Language-safe command allows + env read denies | Always |
 
-## Detection Matrix
+## Beginner Output
 
-The wizard reads your project files and maps them to configurations:
+Final output includes:
 
-| If it finds... | It installs... |
-|-----------------|---------------|
-| `package.json` with React/Next/Vue | Frontend-aware skills, Playwright MCP |
-| `package.json` with Express/Fastify | Backend-aware skills, context7 MCP |
-| `.prettierrc` or Prettier in devDeps | Auto-format hook (Prettier) |
-| `.eslintrc` or ESLint in devDeps | Auto-lint hook (ESLint) |
-| `pyproject.toml` with Ruff | Auto-format hook (Ruff) |
-| `pyproject.toml` with Black | Auto-format hook (Black) |
-| `pyproject.toml` with pytest | Test-writer skill configured for pytest |
-| Jest/Vitest in devDeps | Test-writer skill configured for Jest/Vitest |
-| Playwright/Cypress config | Playwright MCP server |
-| `.github/` directory | GitHub MCP server |
-| `Cargo.toml` | Auto-format hook (cargo fmt) |
-| `go.mod` | Auto-format hook (gofmt) |
-| `.env` or `.env.example` | File protection hook (blocks writes to .env) |
-| Supabase config/deps | Supabase MCP server |
-| 200+ files in codebase | Code-explorer subagent |
+- Technical setup summary
+- Resolved command aliases used in your environment
+- **Beginner Workflow Card** (daily steps)
+- Simple explainer of project automations:
+  - Hooks
+  - MCP servers
+  - Skills/subagents
 
 ## Examples
 
-See what the wizard produces for different project types:
-
-- [Node.js / React / TypeScript project](./examples/example-nodejs-output.md)
-- [Python / FastAPI project](./examples/example-python-output.md)
-
-## How It Works
-
-The prompt in `SETUP_PROMPT.md` is a structured instruction document that tells Claude Code exactly what to do in 4 phases. It contains detection rules, installation templates, and output formats — so Claude can analyze any repo and configure itself optimally.
-
-All configurations are saved to your project's `.claude/` directory and `.mcp.json`, which you can commit to git to share the setup with your team.
-
-### Files Created
-
-```
-your-project/
-├── .claude/
-│   ├── settings.json          # Hooks and permissions
-│   ├── hooks/
-│   │   └── protect-env.sh     # File protection script
-│   ├── skills/
-│   │   ├── code-review/SKILL.md
-│   │   ├── write-tests/SKILL.md
-│   │   └── security-review/SKILL.md
-│   └── agents/
-│       ├── code-reviewer.md
-│       └── test-writer.md
-├── .mcp.json                  # MCP server configs
-└── CLAUDE.md                  # Project instructions
-```
+- [Node.js / React / TypeScript example output](./examples/example-nodejs-output.md)
+- [Python / FastAPI example output](./examples/example-python-output.md)
 
 ## Requirements
 
