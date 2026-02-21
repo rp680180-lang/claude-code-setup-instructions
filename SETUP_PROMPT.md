@@ -84,7 +84,7 @@ Plugins are first-class tools in this workflow.
 
 ### 0c) Global changes gate (required)
 
-Present missing plugins only, with one-line reasons, then require one bulk consent:
+Present missing plugins only, with one-line reasons, then require one bulk consent. A plugin is missing if its expected command does not appear in the `/help` output from step 0a.
 
 ```text
 Global change notice:
